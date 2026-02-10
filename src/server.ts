@@ -7,13 +7,17 @@ import { fileURLToPath } from 'url';
 import { z } from 'zod';
 import { totpService } from './services/totp.service.js';
 import { securityService } from './services/security.service.js';
+import { recoveryService } from './services/recovery.service.js'; // New Service
+import { logger } from './lib/logger.js'; // New Logger
 import redis from './lib/redis.js';
 
 // Setup paths
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const fastify = Fastify({ logger: true });
+const fastify = Fastify({
+    logger: false // Disable default logger to use custom JSON logger
+});
 
 // Plugins
 fastify.register(cors);
@@ -27,19 +31,15 @@ const SetupSchema = z.object({
     user: z.string().min(3),
 });
 
-const VerifySchema = z.object({
-    token: z.string().length(6),
-    secret: z.string().min(10).optional(), // Opcional no login, obrigatório no teste manual
-    user: z.string().min(3),
-});
-
 const LoginSchema = z.object({
     user: z.string().min(3),
-    token: z.string().length(6),
+    token: z.string().min(6), // Pode ser 6 (TOTP) ou 9 (Recovery XXXX-XXXX)
 });
 
 // Routes
 fastify.post('/setup', async (request, reply) => {
+    logger.info({ event: 'SETUP_INIT', message: 'Setup requested', meta: { ip: request.ip } });
+
     const { user } = SetupSchema.parse(request.body);
 
     // 1. Gerar Segredo
@@ -51,30 +51,56 @@ fastify.post('/setup', async (request, reply) => {
     // 3. Gerar QR Code
     const qrCode = await totpService.generateQRCode(otpAuthKey);
 
-    // 4. Salvar Segredo no Redis (Persistência)
-    // Chave: user:{email}, Campo: secret
+    // 4. Gerar Recovery Codes
+    const recoveryCodes = totpService.generateRecoveryCodes();
+
+    // 5. Salvar Segredo no Redis
     await redis.hset(`user:${user}`, { secret });
 
-    return { secret, qrCode };
+    // 6. Salvar Recovery Codes (Hashed)
+    await recoveryService.saveRecoveryCodes(user, recoveryCodes);
+
+    return { secret, qrCode, recoveryCodes };
 });
 
 fastify.post('/login', async (request, reply) => {
     const { user, token } = LoginSchema.parse(request.body);
     const ip = request.ip;
     const userIdentifier = `${user}:${ip}`;
+    const userAgent = request.headers['user-agent'] || 'unknown';
+
+    // 0. Context Awareness (Simple Check)
+    // Em produção, compararíamos com IPs passados do usuário
+    logger.info({
+        event: 'AUTH_SUCCESS', // Tentativa, ainda não sucesso
+        message: 'Login attempt',
+        user, ip, userAgent
+    });
 
     // 1. Check Rate Limit
     const allowed = await securityService.checkRateLimit(userIdentifier);
     if (!allowed) {
+        logger.warn({ event: 'RATE_LIMIT', message: 'Rate limit exceeded', user, ip });
         return reply.status(429).send({
             success: false,
             message: 'Muitas tentativas. Tente novamente em alguns minutos.'
         });
     }
 
+    // Se token tem formato de recovery (contém traço ou tamanho > 6)
+    if (token.includes('-') || token.length > 6) {
+        const isRecoveryValid = await recoveryService.validateAndConsumeCode(user, token);
+        if (isRecoveryValid) {
+            logger.warn({ event: 'RECOVERY_USE', message: 'User logged in with recovery code', user, ip });
+            return { success: true, message: 'Login realizado com Código de Recuperação!' };
+        }
+        // Se falhar recovery, continua fluxo normal (vai falhar no TOTP também)
+    }
+
     // 2. Buscar Segredo do Usuário
     const userData = await redis.hgetall(`user:${user}`);
     if (!userData || !userData.secret) {
+        logger.error({ event: 'AUTH_FAIL', message: 'User not found', user, ip });
         return reply.status(404).send({
             success: false,
             message: 'Usuário não encontrado ou 2FA não configurado.'
@@ -82,9 +108,10 @@ fastify.post('/login', async (request, reply) => {
     }
     const secret = userData.secret;
 
-    // 3. Validar Token
+    // 3. Validar Token TOTP
     const isValid = totpService.verifyToken(token, secret);
     if (!isValid) {
+        logger.warn({ event: 'AUTH_FAIL', message: 'Invalid TOTP code', user, ip });
         return reply.status(401).send({
             success: false,
             message: 'Código inválido.'
@@ -94,57 +121,24 @@ fastify.post('/login', async (request, reply) => {
     // 4. Replay Check
     const isFresh = await securityService.checkReplay(secret, token);
     if (!isFresh) {
+        logger.warn({ event: 'REPLAY_ATTACK', message: 'Replay attack detected', user, ip });
         return reply.status(401).send({
             success: false,
             message: 'Este código já foi utilizado.'
         });
     }
 
+    logger.info({ event: 'AUTH_SUCCESS', message: 'User authenticated successfully', user, ip });
     return { success: true, message: 'Login realizado com sucesso!' };
-});
-
-fastify.post('/verify', async (request, reply) => {
-    const { token, secret, user } = VerifySchema.parse(request.body);
-    const ip = request.ip;
-    const userIdentifier = `${user}:${ip}`; // Rate limit por usuário+IP
-
-    // 1. Check Rate Limit (Bloqueia Brute Force)
-    const allowed = await securityService.checkRateLimit(userIdentifier);
-    if (!allowed) {
-        return reply.status(429).send({
-            success: false,
-            message: 'Muitas tentativas. Tente novamente em alguns minutos.'
-        });
-    }
-
-    // 2. Verifica Validade Matemática do Token
-    const isValid = totpService.verifyToken(token, secret);
-    if (!isValid) {
-        return reply.status(401).send({
-            success: false,
-            message: 'Código inválido.'
-        });
-    }
-
-    // 3. Check Replay Attack (Impede reuso do mesmo token na mesma janela)
-    const isFresh = await securityService.checkReplay(secret, token);
-    if (!isFresh) {
-        return reply.status(401).send({
-            success: false,
-            message: 'Este código já foi utilizado.'
-        });
-    }
-
-    return { success: true, message: 'Autenticado com sucesso!' };
 });
 
 // Start
 const start = async () => {
     try {
         await fastify.listen({ port: 3000, host: '0.0.0.0' });
-        console.log('Server running at http://localhost:3000');
+        logger.info({ event: 'SYSTEM_START', message: 'Server running at http://localhost:3000' });
     } catch (err) {
-        fastify.log.error(err);
+        console.error(err);
         process.exit(1);
     }
 };

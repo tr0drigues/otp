@@ -31,6 +31,20 @@ export class TotpService {
     verifyToken(token: string, secret: string): boolean {
         return authenticator.check(token, secret);
     }
+
+    /**
+     * Gera 10 códigos de recuperação no formato XXXX-XXXX
+     */
+    generateRecoveryCodes(quantity: number = 10): string[] {
+        const codes: string[] = [];
+        for (let i = 0; i < quantity; i++) {
+            const hex = authenticator.generateSecret(8).toUpperCase(); // ~6-8 chars
+            // Format as XXXX-XXXX for readability
+            const code = `${hex.substring(0, 4)}-${hex.substring(4, 8)}`;
+            codes.push(code);
+        }
+        return codes;
+    }
 }
 
 export const totpService = new TotpService();

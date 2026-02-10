@@ -300,7 +300,8 @@
             </div>
 
             <div class="input-group">
-                <input type="text" id="token" class="otp-input" placeholder="000 000" maxlength="6" autocomplete="off">
+                <input type="text" id="token" class="otp-input" placeholder="000 000 or Recovery Code" maxlength="9"
+                    autocomplete="off">
             </div>
 
             <button onclick="doLogin()" id="btnLogin">
@@ -372,7 +373,8 @@
         }
 
         document.getElementById('token').addEventListener('input', function (e) {
-            this.value = this.value.replace(/[^0-9]/g, '');
+            // Allow alphanumeric and dash for recovery codes
+            this.value = this.value.toUpperCase().replace(/[^A-Z0-9-]/g, '');
         });
     </script>
 </body>

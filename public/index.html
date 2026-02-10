@@ -145,10 +145,6 @@
             background: rgba(15, 23, 42, 0.8);
         }
 
-        input::placeholder {
-            color: rgba(148, 163, 184, 0.5);
-        }
-
         button {
             width: 100%;
             background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
@@ -168,10 +164,6 @@
         button:hover {
             transform: translateY(-2px);
             box-shadow: 0 8px 25px rgba(99, 102, 241, 0.4);
-        }
-
-        button:active {
-            transform: translateY(0);
         }
 
         /* Steps */
@@ -213,6 +205,26 @@
             margin-bottom: 2rem;
             font-size: 0.9rem;
             letter-spacing: 1px;
+        }
+
+        /* Recovery Codes Section */
+        #recoverySection {
+            margin-bottom: 2rem;
+            background: rgba(0, 0, 0, 0.2);
+            padding: 1rem;
+            border-radius: 12px;
+            display: none;
+            animation: slideUp 0.5s ease;
+        }
+
+        #recoveryCodesList {
+            font-family: monospace;
+            color: #a5b4fc;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.5rem;
+            font-size: 0.9rem;
+            text-align: center;
         }
 
         .otp-input {
@@ -272,7 +284,7 @@
             }
         }
 
-        /* Loading State */
+        /* Loader */
         .loader {
             width: 20px;
             height: 20px;
@@ -309,7 +321,6 @@
 </head>
 
 <body>
-
     <div class="particle p1"></div>
     <div class="particle p2"></div>
 
@@ -335,6 +346,15 @@
 
                 <div class="secret-display">
                     SECRET: <span id="secretText">...</span>
+                </div>
+
+                <div id="recoverySection">
+                    <h3 style="margin: 0 0 0.5rem 0; font-size: 1rem; color: #cbd5e1;">Recovery Codes</h3>
+                    <p style="font-size: 0.8rem; color: #94a3b8; margin-bottom: 0.5rem;">Save these in a safe place. You
+                        can use them to login if you lose your phone.</p>
+                    <div id="recoveryCodesList">
+                        <!-- Codes injected here -->
+                    </div>
                 </div>
 
                 <div class="input-group">
@@ -363,22 +383,14 @@
 
         function setLoading(btnId, isLoading) {
             const btn = document.getElementById(btnId);
-            if (isLoading) {
-                btn.classList.add('loading');
-                btn.disabled = true;
-            } else {
-                btn.classList.remove('loading');
-                btn.disabled = false;
-            }
+            if (isLoading) { btn.classList.add('loading'); btn.disabled = true; }
+            else { btn.classList.remove('loading'); btn.disabled = false; }
         }
 
         async function setup2FA() {
             const input = document.getElementById('username');
             currentUser = input.value;
-            if (!currentUser) {
-                input.focus();
-                return;
-            }
+            if (!currentUser) { input.focus(); return; }
 
             setLoading('btnSetup', true);
 
@@ -390,29 +402,32 @@
                 });
                 const data = await res.json();
 
-                // Artificial delay for animation feel
                 await new Promise(r => setTimeout(r, 600));
 
                 currentSecret = data.secret;
                 document.getElementById('qrImage').src = data.qrCode;
                 document.getElementById('secretText').textContent = data.secret;
 
+                // Show Recovery Codes
+                if (data.recoveryCodes) {
+                    const list = document.getElementById('recoveryCodesList');
+                    list.innerHTML = data.recoveryCodes.map(c => `<div>${c}</div>`).join('');
+                    document.getElementById('recoverySection').style.display = 'block';
+                }
+
                 document.getElementById('step1').style.opacity = '0';
                 setTimeout(() => {
                     document.getElementById('step1').classList.add('hidden');
                     document.getElementById('step2').classList.remove('hidden');
-                    // Focus na input de token
                     document.getElementById('token').focus();
                 }, 400);
 
-            } catch (e) {
-                console.error(e);
-            } finally {
-                setLoading('btnSetup', false);
-            }
+            } catch (e) { console.error(e); }
+            finally { setLoading('btnSetup', false); }
         }
 
         async function verifyToken() {
+            // ... (rest logic same as before but keeping it simple for setup flow)
             const tokenInput = document.getElementById('token');
             const token = tokenInput.value.replace(/\s/g, '');
             const msg = document.getElementById('message');
@@ -424,41 +439,24 @@
                 const res = await fetch('/verify', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        token,
-                        secret: currentSecret,
-                        user: currentUser
-                    })
+                    body: JSON.stringify({ token, secret: currentSecret, user: currentUser })
                 });
                 const data = await res.json();
-
                 await new Promise(r => setTimeout(r, 500));
 
                 msg.textContent = data.message;
                 msg.style.display = 'block';
                 msg.className = data.success ? 'success' : 'error';
 
-                if (data.success) {
-                    tokenInput.style.borderColor = 'var(--success)';
-                } else {
-                    tokenInput.style.borderColor = 'var(--error)';
-                    tokenInput.classList.add('shake');
-                    setTimeout(() => tokenInput.classList.remove('shake'), 500);
-                }
+                if (data.success) { tokenInput.style.borderColor = 'var(--success)'; }
+                else { tokenInput.style.borderColor = 'var(--error)'; tokenInput.classList.add('shake'); setTimeout(() => tokenInput.classList.remove('shake'), 500); }
 
             } catch (e) {
-                msg.textContent = 'Connection error';
-                msg.className = 'error';
-                msg.style.display = 'block';
-            } finally {
-                setLoading('btnVerify', false);
-            }
+                msg.textContent = 'Connection error'; msg.className = 'error'; msg.style.display = 'block';
+            } finally { setLoading('btnVerify', false); }
         }
 
-        // Auto-format OTP input
-        document.getElementById('token').addEventListener('input', function (e) {
-            this.value = this.value.replace(/[^0-9]/g, '');
-        });
+        document.getElementById('token').addEventListener('input', function (e) { this.value = this.value.replace(/[^0-9]/g, ''); });
     </script>
 </body>
 
