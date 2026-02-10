@@ -142,7 +142,13 @@ fastify.post('/setup', async (request, reply) => {
     await redis.expire(`webauthn:credentials:${user}`, USER_TTL);
 
     // Only return the QRCode (which contains the secret) and Recovery Codes.
-    return { qrCode, recoveryCodes };
+    // [UPDATE] Also return secret/otpAuth for API Integration (Backend-to-Backend storage)
+    return {
+        secret,
+        otpAuth: otpAuthKey,
+        qrCode,
+        recoveryCodes
+    };
 });
 
 fastify.post('/verify', async (request, reply) => {
