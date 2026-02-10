@@ -172,7 +172,18 @@ fastify.post('/setup', async (request, reply) => {
     await redis.expire(`webauthn:credentials:${user}`, USER_TTL);
 
     // Only return the QRCode (which contains the secret) and Recovery Codes.
-    // [UPDATE] Also return secret/otpAuth for API Integration (Backend-to-Backend storage)
+    // [HARDENING] In production, NEVER return secret/otpAuth unless explicitly allowed for debugging.
+
+    const allowDebugOutput = process.env.ALLOW_DEBUG_SETUP_OUTPUT === 'true';
+
+    if (isProduction && !allowDebugOutput) {
+        return {
+            qrCode,
+            recoveryCodes
+        };
+    }
+
+    // Dev mode OR Explicit Debug allowed
     return {
         secret,
         otpAuth: otpAuthKey,
@@ -181,7 +192,16 @@ fastify.post('/setup', async (request, reply) => {
     };
 });
 
+// [HARDENING] This endpoint is stateless and allows verifying a token if you know the secret.
+// In production, secrets are stored securely in Redis and verified via /login.
+// We disable this endpoint in production to prevent misuse, unless explicitly enabled for testing.
 fastify.post('/verify', async (request, reply) => {
+    const enableDevVerify = process.env.ENABLE_DEV_VERIFY_ENDPOINT === 'true';
+
+    if (isProduction && !enableDevVerify) {
+        return reply.status(404).send({ error: 'Not Found', message: 'Endpoint disabled in production.' });
+    }
+
     const { token, secret, user } = request.body as any; // Frontend sends plain secret
     /* 
        Note: ideally we should fetch from Redis to ensure we verify against 

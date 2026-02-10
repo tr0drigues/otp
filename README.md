@@ -130,12 +130,12 @@ sequenceDiagram
 
 ### Endpoints Principais para Integração
 
-| Método | Endpoint | Descrição |
-|--------|----------|-----------|
-| `POST` | `/setup` | Gera Segredo TOTP, QR Code e Uri. |
-| `POST` | `/verify` | Valida um token TOTP (6 dígitos). |
+| Método | Endpoint | Descrição | Status em Prod |
+|--------|----------|-----------|----------------|
+| `POST` | `/setup` | Gera Segredo TOTP, QR Code e Uri. | **Restrito** (Segredos ocultos por padrão) |
+| `POST` | `/verify` | Valida um token TOTP (6 dígitos). | **Desabilitado** (Use `/login`) |
 
-> **Nota**: Para **WebAuthn**, o `Auth Service` gerencia o estado das credenciais internamente.
+> **Nota**: Para habilitar o output completo de `/setup` ou o endpoint `/verify` em produção (não recomendado), use as variáveis de ambiente `ALLOW_DEBUG_SETUP_OUTPUT=true` e `ENABLE_DEV_VERIFY_ENDPOINT=true`.
 
 ## 📚 API Reference (Exemplos)
 

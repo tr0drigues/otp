@@ -7,10 +7,14 @@ services:
     depends_on:
       - redis
     environment:
-      - NODE_ENV=development
+      - NODE_ENV=production
       - SESSION_SECRET=${SESSION_SECRET}
       - ENCRYPTION_KEY=${ENCRYPTION_KEY}
       - CORS_ORIGIN=${CORS_ORIGIN}
+      # Hardening Flags
+      - FRONTEND_ORIGIN=${FRONTEND_ORIGIN}
+      - ALLOW_DEBUG_SETUP_OUTPUT=${ALLOW_DEBUG_SETUP_OUTPUT}
+      - ENABLE_DEV_VERIFY_ENDPOINT=${ENABLE_DEV_VERIFY_ENDPOINT}
       - WEBAUTHN_RP_ID=${WEBAUTHN_RP_ID}
       - WEBAUTHN_ORIGIN=${WEBAUTHN_ORIGIN}
       - WEBAUTHN_RP_NAME=${WEBAUTHN_RP_NAME}
