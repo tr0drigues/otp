@@ -37,14 +37,16 @@ graph TD
 
 ## 🛡️ Funcionalidades de Segurança
 
-1.  **Criptografia em Repouso**: Segredos TOTP são encriptados com AES-256-GCM antes de serem salvos no Redis.
-2.  **Proteção de Replay Estrita**: Bloqueio baseado em Time-Step (janela de 30s) impede reutilização de tokens.
-3.  **Privacidade (Account Enumeration)**: Respostas genéricas (`401 Credenciais inválidas`) impedem a descoberta de usuários existentes.
-4.  **Sessão Segura**: Cookies `HttpOnly`, `Secure` e `SameSite=Strict` após autenticação.
-5.  **Auto-Remoção de Inatividade**: Dados de usuários inativos por 50 dias são automaticamente excluídos (TTL).
-6.  **WebAuthn Standards**: Validação rigorosa de Origin, RPID e Challenge.
-7.  **Rate Limiting**: Proteção contra força bruta (5 tentativas/5min com backoff exponencial).
-8.  **Hardening HTTP**: Headers de segurança via `@fastify/helmet`.
+1.  **Criptografia em Repouso**: Segredos TOTP são encriptados com **AES-256-GCM** (chave de 32 bytes) antes de serem salvos no Redis.
+2.  **Proteção de Replay Atômica**: Bloqueio de uso único baseado em Time-Step (`replay:{userId}:{step}`) utilizando operações atômicas no Redis (`SET NX`), prevenindo condições de corrida.
+3.  **Privacidade (Account Enumeration)**: Respostas genéricas (`401 Credenciais inválidas`) e tempos constantes impedem a enumeração de usuários.
+4.  **Sessão Segura**: Cookies `HttpOnly`, `Secure` e `SameSite=Strict` assinados, com proteção contra Session Fixation.
+5.  **Auto-Remoção de Inatividade**: Dados de usuários inativos por 50 dias são automaticamente excluídos (TTL renovável).
+6.  **WebAuthn Hardening**: Validação estrita de `userVerification` (Biometria/PIN), Challenge e Integridade de Counters.
+7.  **Dual Rate Limiting**:
+    - **IP**: Proteção contra DDoS/Brute-Force (5 tentativas/5min).
+    - **Usuário**: Proteção contra Credential Stuffing (limite separado por conta).
+8.  **Hardening HTTP**: Headers de segurança via `@fastify/helmet` (HSTS, No-Sniff, Frameguard).
 
 ## 📦 Como Rodar
 
