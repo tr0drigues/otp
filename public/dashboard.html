@@ -8,151 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
-    <style>
-        :root {
-            --primary: #6366f1;
-            --bg-dark: #0f172a;
-            --surface: rgba(30, 41, 59, 0.7);
-            --text-main: #f8fafc;
-            --text-dim: #94a3b8;
-            --success: #10b981;
-        }
-
-        body {
-            font-family: 'Outfit', sans-serif;
-            background-color: var(--bg-dark);
-            background-image:
-                radial-gradient(at 0% 0%, rgba(16, 185, 129, 0.1) 0px, transparent 50%),
-                radial-gradient(at 100% 100%, rgba(99, 102, 241, 0.15) 0px, transparent 50%);
-            background-attachment: fixed;
-            color: var(--text-main);
-            min-height: 100vh;
-            margin: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .container {
-            width: 100%;
-            max-width: 500px;
-            padding: 2rem;
-        }
-
-        .card {
-            background: var(--surface);
-            backdrop-filter: blur(20px);
-            border: 1px solid rgba(16, 185, 129, 0.2);
-            border-radius: 24px;
-            padding: 2.5rem;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-            text-align: center;
-            animation: popIn 0.5s ease;
-        }
-
-        @keyframes popIn {
-            0% {
-                transform: scale(0.9);
-                opacity: 0;
-            }
-
-            100% {
-                transform: scale(1);
-                opacity: 1;
-            }
-        }
-
-        .icon-circle {
-            width: 80px;
-            height: 80px;
-            background: rgba(16, 185, 129, 0.1);
-            border: 2px solid var(--success);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin: 0 auto 1.5rem auto;
-            color: var(--success);
-            font-size: 2.5rem;
-        }
-
-        h1 {
-            margin: 0;
-            font-size: 1.8rem;
-        }
-
-        .subtitle {
-            color: var(--text-dim);
-            margin-top: 0.5rem;
-            margin-bottom: 2rem;
-        }
-
-        .data-grid {
-            text-align: left;
-            background: rgba(0, 0, 0, 0.2);
-            padding: 1.5rem;
-            border-radius: 12px;
-            margin-bottom: 2rem;
-            border: 1px solid rgba(255, 255, 255, 0.05);
-        }
-
-        .data-row {
-            display: flex;
-            justify-content: space-between;
-            padding: 0.75rem 0;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-        }
-
-        .data-row:last-child {
-            border-bottom: none;
-        }
-
-        .label {
-            color: var(--text-dim);
-            font-size: 0.9rem;
-            font-weight: 500;
-        }
-
-        .value {
-            color: white;
-            font-family: monospace;
-            font-size: 0.95rem;
-        }
-
-        .method-badge {
-            background: var(--primary);
-            padding: 0.2rem 0.6rem;
-            border-radius: 6px;
-            font-size: 0.8rem;
-            font-weight: 600;
-        }
-
-        button {
-            width: 100%;
-            background: transparent;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            color: var(--text-dim);
-            padding: 1rem;
-            border-radius: 12px;
-            font-size: 1rem;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        button:hover {
-            border-color: white;
-            color: white;
-            background: rgba(255, 255, 255, 0.05);
-        }
-
-        .dev-note {
-            margin-top: 2rem;
-            font-size: 0.75rem;
-            color: #64748b;
-            border-top: 1px solid rgba(255, 255, 255, 0.05);
-            padding-top: 1rem;
-        }
-    </style>
+    <link rel="stylesheet" href="style.css">
 </head>
 
 <body>
@@ -186,9 +42,9 @@
                 </div>
             </div>
 
-            <button onclick="logout()">Sign Out</button>
+            <button class="logout-btn" onclick="logout()">Sign Out</button>
 
-            <div class="dev-note">
+            <div class="developer-note">
                 <strong style="color: #94a3b8">DEVELOPER MODE</strong><br>
                 This screen confirms the authentication flow is working.<br>
                 In production, redirect directly to your app dashboard.

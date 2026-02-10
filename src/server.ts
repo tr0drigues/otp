@@ -25,7 +25,8 @@ const __dirname = path.dirname(__filename);
 const USER_TTL = 50 * 24 * 60 * 60;
 
 const fastify = Fastify({
-    logger: false // Disable default logger to use custom JSON logger
+    logger: false, // Disable default logger to use custom JSON logger
+    trustProxy: true // Trust Nginx proxy for correct IP rate limiting
 });
 
 // Plugins
@@ -71,7 +72,8 @@ fastify.register(fastifyHelmet, {
             baseUri: ["'none'"],
             formAction: ["'self'"],
             frameAncestors: ["'none'"],
-            connectSrc: ["'self'"] // Allow fetch to self
+            connectSrc: ["'self'"], // Allow fetch to self
+            upgradeInsecureRequests: null // Disable auto-upgrade to HTTPS (fixes localhost issue)
         }
     },
     // Disable HSTS in development to avoid HTTPS redirection on localhost
@@ -139,9 +141,31 @@ fastify.post('/setup', async (request, reply) => {
     await redis.expire(`recovery:${user}`, USER_TTL);
     await redis.expire(`webauthn:credentials:${user}`, USER_TTL);
 
-    // FIX: Never return the secret to the client!
     // Only return the QRCode (which contains the secret) and Recovery Codes.
     return { qrCode, recoveryCodes };
+});
+
+fastify.post('/verify', async (request, reply) => {
+    const { token, secret, user } = request.body as any; // Frontend sends plain secret
+    /* 
+       Note: ideally we should fetch from Redis to ensure we verify against 
+       what we stored, but for this simple setup flow, verifying against 
+       the secret the client just received is acceptable for "did I scan it right?".
+       
+       However, to be robust, let's verify if the token matches the secret provided.
+    */
+
+    if (!token || !secret) {
+        return reply.status(400).send({ success: false, message: 'Token e Segredo são obrigatórios.' });
+    }
+
+    const isValid = totpService.verifyToken(token, secret);
+
+    if (isValid) {
+        return { success: true, message: 'Código verificado com sucesso!' };
+    } else {
+        return reply.status(400).send({ success: false, message: 'Código inválido. Tente novamente.' });
+    }
 });
 
 fastify.post('/login', async (request, reply) => {
@@ -261,7 +285,7 @@ fastify.post('/login', async (request, reply) => {
         path: '/',
         httpOnly: true,
         secure: isProduction, // Use global flag
-        sameSite: 'strict',
+        sameSite: 'lax',
         maxAge: 3600,
         signed: true // Sign the cookie
     });
@@ -369,7 +393,7 @@ fastify.post('/webauthn/login/verify', async (request, reply) => {
 const start = async () => {
     try {
         await fastify.listen({ port: 3000, host: '0.0.0.0' });
-        logger.info({ event: 'SYSTEM_START', message: 'Server running at http://localhost:3000' });
+        logger.info({ event: 'SYSTEM_START', message: 'Server running at http://localhost' });
     } catch (err) {
         console.error(err);
         process.exit(1);

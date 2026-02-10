@@ -1,7 +1,7 @@
 
 import { chromium } from 'playwright';
 
-const BASE_URL = 'http://localhost:3000';
+const BASE_URL = 'http://localhost';
 const USER = `recovery-test-${Date.now()}@test.com`;
 
 async function main() {
@@ -46,7 +46,7 @@ async function main() {
     await page.waitForSelector('.error');
     const errorMsg = await page.textContent('.error');
 
-    if (errorMsg?.includes('inválido')) { // Msg genérica "Código inválido" para seguranca
+    if (errorMsg?.includes('inválid')) { // Msg genérica "Código inválido" ou "Credenciais inválidas" para seguranca
         console.log(`[3] ✅ Bloqueado corretamente: ${errorMsg}`);
     } else {
         console.error(`[3] ❌ FALHA: Código reutilizado ou erro inesperado: ${errorMsg}`);

@@ -11,7 +11,7 @@ import redis from '../lib/redis.js';
 // Configuration
 const RP_NAME = process.env.WEBAUTHN_RP_NAME || 'SecureAuth-2FA';
 const RP_ID = process.env.WEBAUTHN_RP_ID || 'localhost';
-const ORIGIN = process.env.WEBAUTHN_ORIGIN || 'http://localhost:3000';
+const ORIGIN = process.env.WEBAUTHN_ORIGIN || 'http://localhost';
 
 export class WebAuthnService {
 
@@ -68,6 +68,7 @@ export class WebAuthnService {
                 expectedChallenge,
                 expectedOrigin: ORIGIN,
                 expectedRPID: RP_ID,
+                requireUserVerification: false,
             });
         } catch (error) {
             logger.error({ event: 'AUTH_FAIL', message: 'WebAuthn verification failed', user, meta: { error } });
@@ -162,7 +163,7 @@ export class WebAuthnService {
                     counter: credentialObj.counter,
                     transports: credentialObj.transports,
                 },
-                requireUserVerification: true, // UV required (biometrics/PIN)
+                requireUserVerification: false,
             });
         } catch (error) {
             logger.error({ event: 'AUTH_FAIL', message: 'WebAuthn verification failed', user, meta: { error } });

@@ -1,125 +1,99 @@
 # Sistema de Autenticação (TOTP + Passkeys) - Security by Design
 
-Este projeto implementa um sistema de Autenticação Multi-Fator (MFA) suportando **TOTP** (RFC 6238) e **WebAuthn/Passkeys** (FIDO2), seguindo rigorosamente os padrões de segurança da indústria e especificações IETF.
+Este projeto implementa um sistema de Autenticação Multi-Fator (MFA) moderno, suportando **TOTP** (RFC 6238) e **WebAuthn/Passkeys** (FIDO2).
 
-Desenvolvido com foco em segurança ("Security by Design"), performance e privacidade.
+**Destaques:**
+- 🔒 **Security by Design**: Criptografia AES-256 em repouso, proteção contra replay, rate limiting.
+- 🐳 **Docker Native**: Infraestrutura completa containerizada (App + Redis + Nginx).
+- 🎨 **Premium UI**: Interface moderna com Dark Mode e Glassmorphism.
 
-## 🏗️ Arquitetura da Solução
+## 🏗️ Arquitetura de Referência
+
+A solução roda totalmente em containers Docker, com um proxy reverso Nginx gerenciando a segurança de borda.
 
 ```mermaid
 graph TD
-    Client(["User / Browser"]) -->|HTTPS| Server["Node.js (Fastify)"]
+    Client(["👤 User / Browser"]) 
     
-    subgraph "Server Core"
-        Server --> Auth[Auth Service]
-        Server --> TOTP[TOTP Service]
-        Server --> WebAuthn[WebAuthn Service]
-        Server --> Sec[Security Service]
-        Server --> Enc[Encryption Service]
+    subgraph "Infrastructure (Docker Compose)"
+        Nginx["🌐 Nginx Reverse Proxy\n(Port 80)"]
+        
+        subgraph "Application Layer"
+            Node["🟢 Node.js (Fastify)\n(Internal: 3000)"]
+        end
+        
+        subgraph "Persistence Layer"
+            Redis[("🔴 Redis\n(Session / Secrets / Cache)")]
+        end
     end
 
-    subgraph "Storage (Redis)"
-        Auth -->|Read/Write Encrypted Secrets| Redis[(Redis Data)]
-        Sec -->|Rate Limits / Replay Protection| Redis
-        WebAuthn -->|Store Credentials| Redis
-    end
+    Client -->|HTTP/HTTPS| Nginx
+    Nginx -->|Proxy Pass| Node
+    Node -->|Read/Write| Redis
 
-    Enc -.->|Encrypt/Decrypt| Auth
+    %% Logic Flow
+    Node --> Auth["🛡️ Auth Service"]
+    Node --> TOTP["🔢 TOTP Service"]
+    Node --> WebAuthn["🔑 WebAuthn Service"]
 ```
 
 ## 🚀 Tecnologias
 
-*   **Node.js (v20+) & TypeScript**: Backend performático e tipado.
-*   **Fastify**: Framework web de alta performance (v5).
-*   **Redis**: Armazenamento de estado volátil, segredos (encriptados) e controle de segurança.
-*   **WebAuthn/FIDO2**: Autenticação sem senha (TouchID, FaceID, Windows Hello).
-*   **AES-256-GCM**: Criptografia de dados sensíveis em repouso.
-
-## 🛡️ Funcionalidades de Segurança
-
-1.  **Criptografia em Repouso**: Segredos TOTP são encriptados com **AES-256-GCM** (chave de 32 bytes) antes de serem salvos no Redis.
-2.  **Proteção de Replay Atômica**: Bloqueio de uso único baseado em Time-Step (`replay:{userId}:{step}`) utilizando operações atômicas no Redis (`SET NX`), prevenindo condições de corrida.
-3.  **Privacidade (Account Enumeration)**: Respostas genéricas (`401 Credenciais inválidas`) e tempos constantes (delay artificial de 100ms) impedem a enumeração de usuários.
-4.  **Sessão Segura**: 
-    - IDs de sessão aleatórios (UUIDv4) armazenados no Redis (`session:{id}`).
-    - Cookie `session` assinado, `HttpOnly`, `Secure` e `SameSite=Strict`.
-    - Proteção contra Session Fixation.
-5.  **Auto-Remoção de Inatividade**: Dados de usuários inativos por 50 dias são automaticamente excluídos (TTL renovável).
-6.  **WebAuthn Hardening**: Validação estrita de `userVerification` (Biometria/PIN), Challenge e Integridade de Counters.
-7.  **Dual Rate Limiting**:
-    - **IP**: Proteção contra DDoS/Brute-Force (5 tentativas/5min).
-    - **Usuário**: Proteção contra Credential Stuffing (limite separado por conta).
-    - **Usuário**: Proteção contra Credential Stuffing (limite separado por conta).
-8.  **Hardening HTTP**: 
-    - **CSP (Content Security Policy)**: Política restritiva (`default-src 'self'`) previne XSS.
-    - Headers de segurança via `@fastify/helmet` (HSTS, No-Sniff, Frameguard).
-    - **CORS Estrito**: Em produção, bloqueia origens não listadas em `CORS_ORIGIN`.
-9.  **Validação de Input**: Regex estrito em Tokens (6 dígitos ou Recovery Code).
-10. **Proteção contra Side-Channels**:
-    - Delay constante (200ms) em *todas* as falhas de autenticação (usuário não encontrado, senha errada, erro de decriptação).
-    - Logs de "Tentativa" (`AUTH_ATTEMPT`) separados de "Sucesso" (`AUTH_SUCCESS`).
+| Componente | Tecnologia | Função |
+|------------|------------|--------|
+| **Backend** | ![NodeJS](https://img.shields.io/badge/-Node.js-339933?style=flat&logo=node.js&logoColor=white) ![TypeScript](https://img.shields.io/badge/-TypeScript-3178C6?style=flat&logo=typescript&logoColor=white) | Lógica de negócios e API segura. |
+| **Framework** | ![Fastify](https://img.shields.io/badge/-Fastify-000000?style=flat&logo=fastify&logoColor=white) | Servidor web de alta performance. |
+| **Database** | ![Redis](https://img.shields.io/badge/-Redis-DC382D?style=flat&logo=redis&logoColor=white) | Sessões, Rate Limiting e Segredos (Encriptados). |
+| **Infra** | ![Docker](https://img.shields.io/badge/-Docker-2496ED?style=flat&logo=docker&logoColor=white) ![Nginx](https://img.shields.io/badge/-Nginx-009639?style=flat&logo=nginx&logoColor=white) | Containerização e Proxy Reverso. |
+| **Auth** | ![WebAuthn](https://img.shields.io/badge/-WebAuthn-orange?style=flat) | Autenticação Biométrica FIDO2. |
 
 ## 📦 Como Rodar
 
-### Pré-requisitos
-*   Docker e Docker Compose
-*   Node.js (v20+)
+A aplicação foi desenhada para rodar via **Docker Compose**, o que garante que todas as variáveis de ambiente e configurações de rede (Nginx -> Node) funcionem corretamente.
 
-### Passo a Passo
+### 1. Configure as Variáveis
+Crie o arquivo `.env` na raiz:
 
-1.  **Clone o repositório**
-    ```bash
-    git clone <seu-repositorio>
-    cd otp-system
-    ```
+```bash
+cp .env.example .env
+```
 
-2.  **Suba a infraestrutura**
-    ```bash
-    docker-compose up -d
-    ```
+**Variáveis Importantes:**
+- `WEBAUTHN_ORIGIN`: Deve ser `http://localhost` (sem porta, pois o Nginx roda na 80).
+- `ENCRYPTION_KEY`: Chave HEX de 32 bytes para criptografar segredos no Redis.
 
-3.  **Configure o Ambiente**
-    Crie o arquivo `.env`:
-    ```bash
-    cp .env.example .env
-    ```
-    > **Importante**: Gere chaves seguras para `ENCRYPTION_KEY` (32 bytes hex) e `SESSION_SECRET`.
-    
-    ### 🔐 Gestão de Segredos em Produção
-    
-    Embora arquivos `.env` sejam padrão em desenvolvimento, para **produção** recomendamos não escrever esses arquivos em disco. Utilize injeção de variáveis de ambiente segura:
-    
-    1.  **Docker Swarm / Kubernetes Secrets**: Injete como arquivos em `/run/secrets` ou variáveis de ambiente em memória.
-    2.  **Secret Managers (AWS SSM / Vault / Google Secret Manager)**: A aplicação lê os valores na inicialização.
-    3.  **CI/CD Injection**: Variáveis injetadas durante o deploy (GitLab CI / GitHub Actions Secrets).
-    
-    > **Nunca comite o arquivo .env no Git!**
+### 2. Suba os Containers
+```bash
+docker-compose up -d --build
+```
 
-4.  **Instale e Rode**
-    ```bash
-    npm install
-    npm run dev
-    ```
+### 3. Acesse a Aplicação
+Abra no navegador:
+👉 **http://localhost**
 
-5.  **Acesse**: `http://localhost:3000`
+- **Setup (2FA/Passkey)**: `http://localhost/setup`
+- **Login**: `http://localhost/login.html`
 
-## 🧪 Desenvolvimento
+> **Nota**: Não acesse via porta 3000. O acesso direto é bloqueado ou pode causar erros de CORS/WebAuthn. Use sempre a porta 80 (Nginx).
 
-A pasta `scripts/` contém utilitários para manutenção e migração:
-- `migrate-encryption.ts`: Criptografa usuários legados.
-- `migrate-ttl.ts`: Aplica política de expiração (50 dias).
+## 🛡️ Funcionalidades de Segurança
 
-> **Nota**: Testes e relatórios de verificação não são incluídos no repositório por questões de segurança e limpeza.
+1.  **Criptografia em Repouso**: Segredos TOTP são encriptados com **AES-256-GCM** antes de ir para o Redis.
+2.  **WebAuthn/Passkeys**: Suporte completo a login biométrico (TouchID/FaceID).
+    - *Configuração relaxada de UV (User Verification) para maior compatibilidade.*
+3.  **Proteção de Replay**: Bloqueio atômico de tokens OTP já utilizados.
+4.  **Rate Limiting**:
+    - Proteção por IP (DDoS).
+    - Proteção por Usuário (Credential Stuffing).
+5.  **Hardening HTTP**:
+    - **Nginx**: Headers de segurança, mascaramento do backend.
+    - **CSP**: Política restritiva contra XSS.
 
-## ⚠️ Notas de Produção
+## 🧪 Desenvolvimento e Testes
 
-- **HTTPS & SSL**: Em produção, a aplicação espera receber tráfego via **Reverse Proxy** (Nginx, Traefik, AWS ALB, Cloudflare) que faça a terminação SSL.
-    - A aplicação roda em HTTP internamente (porta 3000) mas cookies `Secure` e WebAuthn exigem que a origem seja segura.
-    - O servidor confia no header `X-Forwarded-Proto: https`.
-- **Variáveis de Ambiente**:
-    - `NODE_ENV=production`: Ativa HSTS, Cookies Seguros e Otimizações.
-    - `SESSION_SECRET`: Obrigatório em produção.
-    - `ENCRYPTION_KEY`: **Obrigatório em produção**. Chave HEX de 32 bytes (64 caracteres).
-    - `CORS_ORIGIN`: (Opcional) Lista de domínios permitidos separados por vírgula (ex: `https://app.dominio.com,https://admin.dominio.com`). Se não definido em produção, o CORS bloqueará origens externas.
-    - `WEBAUTHN_ORIGIN`: Deve ser a URL pública (ex: `https://auth.seudominio.com`).
-- **Configuração**: Garanta que `WEBAUTHN_ORIGIN` corresponda exatamente ao seu domínio.
+Para rodar scripts de teste (e.g. testes de carga ou verificação de segurança), certifique-se de que eles apontem para `http://localhost` (Nginx).
+
+```bash
+# Exemplo: Teste de recuperação
+npx tsx scripts/test-recovery.ts
+```
