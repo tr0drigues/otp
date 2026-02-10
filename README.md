@@ -138,6 +138,23 @@ Este projeto é uma implementação de referência. Para uso em produção, cons
 2.  **Variáveis de Ambiente**: Mova configurações sensíveis (host do Redis, portas) para um arquivo `.env` (exemplo não incluído por segurança).
 3.  **Redis Password**: Configure uma senha forte no `docker-compose.yml` e no cliente Redis.
 
+## ⚙️ Customização
+
+### Alterar Nome da Aplicação (Authenticator Label)
+Para alterar o nome que aparece no aplicativo autenticador do usuário (ex: "SuaEmpresa" ao invés de "SecureAuth-2FA"):
+
+1.  Edite o arquivo `src/services/totp.service.ts`.
+2.  Localize o método `getOtpAuthKey`.
+3.  Altere o segundo parâmetro da função `authenticator.keyuri`:
+
+```typescript
+// src/services/totp.service.ts
+getOtpAuthKey(user: string, secret: string) {
+    // Altere 'SecureAuth-2FA' para o nome desejado (sem espaços ou caracteres especiais recomendados)
+    return authenticator.keyuri(user, 'NomeDaSuaApp', secret);
+}
+```
+
 ---
 
 Desenvolvido como demonstração de **Security by Design** e **Frontend Aesthetics**.
