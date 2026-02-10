@@ -131,31 +131,29 @@ O diagrama abaixo ilustra como uma aplicação legada ou nova deve consumir este
 
 ```mermaid
 sequenceDiagram
-    participant User as 👤 Usuário
-    participant Frontend as 📱 Sua App (Frontend)
-    participant Backend as ⚙️ Sua App (Backend)
-    participant Auth as 🛡️ Auth Service (Este Projeto)
+  autonumber
+  participant C as Client/App
+  participant API as OTP API (Backend)
+  participant R as Redis
 
-    User->>Frontend: Digita Login + Senha
-    Frontend->>Backend: POST /login (credenciais básicas)
-    Backend->>Backend: Valida Senha (LDAP/DB)
-    
-    rect rgb(20, 20, 20)
-        note right of Backend: 🔓 Início do Fluxo MFA
-        Backend-->>Frontend: 200 OK (Requer 2FA)
-        
-        Frontend->>User: Solicita Token TOTP ou Biometria
-        User->>Frontend: Insere Token / TouchID
-        
-        Frontend->>Backend: POST /verify-2fa { token, user }
-        
-        Backend->>Auth: POST /login (backend-to-backend)
-        Note over Backend,Auth: Payload: { user, token }
-        Auth-->>Backend: { success: true }
-    end
-    
-    Backend->>Frontend: 200 OK (Login Completo + JWT)
-    Frontend->>User: Redireciona para Dashboard
+  Note over C,API: Produção: o client nunca recebe nem envia secret/otpAuth
+
+  C->>API: POST /login { user, token }
+  API->>API: Validar payload + resposta genérica em falha (anti-enumeração)
+  API->>R: Rate limit (ip + user)
+  R-->>API: OK
+
+  API->>R: HGET user:{user} (encryptedSecret, ...)
+  R-->>API: encryptedSecret
+
+  API->>API: Decrypt secret in-memory (AES-256-GCM)
+  API->>API: Verify TOTP (com window/skew)
+  API->>R: Replay check (SET replay:{user}:{step} NX EX ...)
+  R-->>API: OK
+
+  API->>R: Create session (SET session:{id} EX ...)
+  R-->>API: OK
+  API-->>C: 200 OK + Set-Cookie: session=... (HttpOnly/Secure/SameSite)<br/>{ message, method, context }
 ```
 
 ### Arquitetura de Referência (Integração com App Externa)
@@ -164,30 +162,31 @@ Este diagrama ilustra como sua aplicação (Consumer App) deve interagir com o A
 
 ```mermaid
 sequenceDiagram
-    participant U as 👤 Usuário
-    participant App as 📱 Consumer App (Backend)
-    participant Auth as 🛡️ Auth Service (MFA)
-    participant DB as 🗄️ App DB
+  autonumber
+  participant App as App Externa (Frontend)
+  participant API as OTP API (Backend)
+  participant Redis as Redis
+  participant User as Usuário
 
-    Note over U, DB: Setup Inicial (Ativação MFA)
-    U->>App: Quero ativar 2FA
-    App->>Auth: POST /setup { user: "u@email.com" }
-    Auth-->>App: { qrCode, recoveryCodes }
-    App-->>U: Exibe QR Code e Recovery Codes
+  Note over App,API: Produção: /setup retorna apenas qrCode e recoveryCodes (sem secret/otpAuth)
 
-    Note over U, DB: Fluxo de Login (Validação)
-    U->>App: Login (Email + Senha)
-    App->>DB: Valida credenciais primárias
-    App-->>U: Solicita Código MFA
-    U->>App: Envia Token (6 dígitos)
-    App->>Auth: POST /login { user, token }
-    alt Token Válido
-        Auth-->>App: { success: true }
-        App-->>U: Login Sucesso + Sessão Criada
-    else Token Inválido
-        Auth-->>App: 400 Bad Request
-        App-->>U: Erro "Código Inválido"
-    end
+  App->>API: POST /setup { user }
+  API->>API: Generate TOTP secret
+  API->>API: Encrypt secret (AES-256-GCM)
+  API->>Redis: HSET user:{user} encryptedSecret + metadata
+  Redis-->>API: OK
+  API-->>App: 200 { qrCode, recoveryCodes }
+
+  App->>User: Exibir QR Code (usuário cadastra no Authenticator)
+  User-->>App: Informa token TOTP (6 dígitos)
+
+  App->>API: POST /login { user, token }
+  API->>Redis: HGET user:{user} encryptedSecret
+  Redis-->>API: encryptedSecret
+  API->>API: Decrypt + Verify TOTP + Replay check + Rate limit
+  API->>Redis: Create session (session:{id})
+  Redis-->>API: OK
+  API-->>App: 200 + Set-Cookie: session=...<br/>{ message, method, context }
 ```
 
 ### Endpoints Principais para Integração
