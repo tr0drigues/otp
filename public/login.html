@@ -371,7 +371,14 @@
 
                 if (data.success) {
                     tokenInput.style.borderColor = 'var(--success)';
-                    setTimeout(() => alert('Login Successful! Redirecting...'), 1000);
+                    // Store metadata for dashboard
+                    if (data.meta) {
+                        sessionStorage.setItem('auth_meta', JSON.stringify(data.meta));
+                    }
+
+                    setTimeout(() => {
+                        window.location.href = '/dashboard.html';
+                    }, 500);
                 } else {
                     tokenInput.style.borderColor = 'var(--error)';
                     tokenInput.classList.add('shake');

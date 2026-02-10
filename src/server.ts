@@ -92,7 +92,16 @@ fastify.post('/login', async (request, reply) => {
         const isRecoveryValid = await recoveryService.validateAndConsumeCode(user, token);
         if (isRecoveryValid) {
             logger.warn({ event: 'RECOVERY_USE', message: 'User logged in with recovery code', user, ip });
-            return { success: true, message: 'Login realizado com Código de Recuperação!' };
+            return {
+                success: true,
+                message: 'Login realizado com Código de Recuperação!',
+                meta: {
+                    method: 'RECOVERY_CODE',
+                    user,
+                    ip,
+                    timestamp: new Date().toISOString()
+                }
+            };
         }
         // Se falhar recovery, continua fluxo normal (vai falhar no TOTP também)
     }
@@ -129,7 +138,16 @@ fastify.post('/login', async (request, reply) => {
     }
 
     logger.info({ event: 'AUTH_SUCCESS', message: 'User authenticated successfully', user, ip });
-    return { success: true, message: 'Login realizado com sucesso!' };
+    return {
+        success: true,
+        message: 'Login realizado com sucesso!',
+        meta: {
+            method: 'TOTP_APP',
+            user,
+            ip,
+            timestamp: new Date().toISOString()
+        }
+    };
 });
 
 // Start

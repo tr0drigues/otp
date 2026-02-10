@@ -85,6 +85,20 @@ Este script irá verificar:
 - ✅ Se códigos duplicados (Replay Attack) são rejeitados.
 - ✅ Se o sistema resiste a injeção de inputs maliciosos.
 
+### Dashboard de Validação (Developer Mode)
+Ao realizar o login com sucesso no ambiente de desenvolvimento, você será redirecionado para `dashboard.html`.
+Esta página exibe os metadados da sessão (Usuário, Método usado, IP) para confirmar se a autenticação ocorreu via **TOTP App** ou **Recovery Code**.
+
+> **⚠️ Para Produção**:
+> Edite o arquivo `public/login.html` (linha ~360) e altere o redirecionamento:
+> ```javascript
+> // De:
+> window.location.href = '/dashboard.html';
+> // Para:
+> window.location.href = '/app'; // Sua rota real
+> ```
+> E remova o arquivo `public/dashboard.html`.
+
 ## 📚 API Endpoints
 
 ### `POST /setup`
