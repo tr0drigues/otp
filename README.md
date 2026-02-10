@@ -1,7 +1,6 @@
+# Sistema de Autenticação Moderno (TOTP + Passkeys) - Security by Design
 
-# Sistema de Autenticação TOTP (RFC 6238) - Security by Design
-
-Este projeto implementa um sistema robusto de Autenticação de Dois Fatores (2FA) utilizando o algoritmo **TOTP** (Time-Based One-Time Password), seguindo rigorosamente as especificações das RFCs 4226 e 6238.
+Este projeto implementa um sistema robusto de Autenticação Multi-Fator (MFA) suportando **TOTP** (RFC 6238) e **WebAuthn/Passkeys** (FIDO2), seguindo rigorosamente os padrões de segurança da indústria e especificações IETF.
 
 Desenvolvido com foco em segurança ("Security by Design"), performance e melhor experiência do desenvolvedor/usuário.
 
@@ -180,5 +179,3 @@ getOtpAuthKey(user: string, secret: string) {
 ```
 
 ---
-
-Desenvolvido como demonstração de **Security by Design** e **Frontend Aesthetics**.

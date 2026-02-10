@@ -1,7 +1,6 @@
+# Relatório de Conformidade: TOTP (RFC 6238) & WebAuthn (RFC 8812)
 
-# Relatório de Conformidade RFC 4226 / 6238
-
-Este documento valida a implementação do sistema OTP em relação aos padrões da Internet (IETF RFCs) e aos princípios detalhados no artigo [The Guts of 2FA](https://geeklaunch.io/blog/the-guts-of-two-factor-authentication/).
+Este documento valida a implementação do sistema MFA em relação aos padrões da Internet (IETF RFCs) e aos princípios de segurança modernos.
 
 ## 1. RFC 4226: HMAC-Based One-Time Password (HOTP)
 Esta RFC define o algoritmo fundamental de criptografia e truncamento.
