@@ -13,7 +13,7 @@ const redis = new Redis({
     },
 });
 
-redis.on('error', (err: Error) => {
+redis.on('error', (err: any) => {
     console.error('Redis Error:', err);
 });
 
