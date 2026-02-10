@@ -222,27 +222,7 @@ Chamado pelo seu Backend quando o usuário ativa o 2FA.
 ```
 > **Nota de Segurança**: Em Produção, `secret` e `otpAuth` **não são retornados** para evitar vazamento. Se precisar deles para debugging, veja a seção [Modo Dev vs Prod](#modo-dev-vs-prod).
 
-### 2. Verify (Test Only / Legacy)
-⚠ **Atenção**: Este endpoint é **desabilitado por padrão em produção** (retorna 404). Use o endpoint `/login` para validação real.
-
-**Request:** `POST /verify`
-```json
-{
-  "user": "usuario@exemplo.com",
-  "token": "123456",
-  "secret": "JBSWY3..." // Em Prod isso não está disponível no client!
-}
-```
-
-**Response:**
-```json
-{
-  "success": true,
-  "message": "Código verificado!"
-}
-```
-
-### 3. Login (Autenticação / Validação em Produção)
+### 2. Login (Autenticação / Validação em Produção)
 Esta é a **forma recomendada** de validar o código em Produção. O endpoint busca o segredo seguro no Redis e valida o token.
 
 **Request:** `POST /login`
@@ -266,6 +246,26 @@ Esta é a **forma recomendada** de validar o código em Produção. O endpoint b
 }
 ```
 > **Nota:** Este endpoint também define um **Cookie de Sessão** (`httpOnly`) para manter o usuário logado no domínio.
+
+### 3. Verify (Test Only / Desativado em Prod)
+⚠ **Atenção**: Este endpoint é **desabilitado por padrão em produção** (retorna 404). Use o endpoint `/login` para validação real.
+
+**Request:** `POST /verify`
+```json
+{
+  "user": "usuario@exemplo.com",
+  "token": "123456",
+  "secret": "JBSWY3..." // Em Prod isso não está disponível no client!
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Código verificado!"
+}
+```
 
 Ao levar esta arquitetura para produção (AWS, Azure, DigitalOcean), considere:
 
