@@ -29,7 +29,27 @@ const fastify = Fastify({
 });
 
 // Plugins
-fastify.register(cors);
+fastify.register(cors, {
+    origin: (origin, cb) => {
+        const isProd = process.env.NODE_ENV === 'production';
+        // Allow requests with no origin (like mobile apps or curl requests)
+        if (!origin) return cb(null, true);
+
+        if (isProd) {
+            // In production, strictly allow only allowed origins
+            const allowedOrigins = process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',') : [];
+            if (allowedOrigins.includes(origin)) {
+                return cb(null, true);
+            }
+            // If no CORS_ORIGIN is set, we might want to default to false or log a warning.
+            // For now, let's strictly fail if not matched.
+            return cb(new Error("Not allowed by CORS"), false);
+        }
+
+        // Dev: Allow all
+        return cb(null, true);
+    }
+});
 // Enforce SESSION_SECRET in production
 if (!process.env.SESSION_SECRET) {
     console.error('FATAL: SESSION_SECRET is required.');
@@ -42,11 +62,16 @@ fastify.register(fastifyHelmet, {
     contentSecurityPolicy: {
         directives: {
             defaultSrc: ["'self'"],
-            scriptSrc: ["'self'"],
+            scriptSrc: ["'self'", "'unsafe-inline'"], // Allow inline scripts (onclick, <script>)
+            scriptSrcAttr: ["'unsafe-inline'"], // Allow inline event handlers (onclick)
+            styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"], // Allow inline styles & Fonts
+            fontSrc: ["'self'", "https://fonts.gstatic.com"], // Allow Google Fonts
+            imgSrc: ["'self'", "data:"], // Allow QR Code (data:image/png)
             objectSrc: ["'none'"],
             baseUri: ["'none'"],
             formAction: ["'self'"],
-            frameAncestors: ["'none'"]
+            frameAncestors: ["'none'"],
+            connectSrc: ["'self'"] // Allow fetch to self
         }
     },
     // Disable HSTS in development to avoid HTTPS redirection on localhost
@@ -63,7 +88,7 @@ fastify.register(fastifyCookie, {
         // In dev (localhost), browsers treat it as secure context, but HSTS breaks http.
         // We set secure: true ONLY in production to avoid issues.
         secure: isProduction,
-        sameSite: 'strict',
+        sameSite: 'lax', // Relaxed for better compatibility during dev (Safari localhost issues)
         path: '/'
     }
 });
@@ -128,10 +153,11 @@ fastify.post('/login', async (request, reply) => {
     // 0. Context Awareness (Simple Check)
     // Em produção, compararíamos com IPs passados do usuário
     logger.info({
-        event: 'AUTH_SUCCESS', // Tentativa, ainda não sucesso
+        event: 'AUTH_ATTEMPT', // Tentativa, ainda não sucesso
         message: 'Login attempt',
         user, ip, userAgent
     });
+    console.log('[DEBUG] Login Request:', { user, tokenLength: token.length }); // Debug log
 
     // 1. Check Rate Limit (Dual Layer: IP & User)
     // Layer 1: IP Rate Limit (DDoS / Brute Force protection)
@@ -187,7 +213,8 @@ fastify.post('/login', async (request, reply) => {
         // User not found
         logger.warn({ event: 'AUTH_FAIL', message: 'User not found (Generic logic)', user, ip });
         // Constant Time Delay (Fake verification time)
-        await new Promise(resolve => setTimeout(resolve, 100));
+        // Increased to 200ms to match other operations roughly
+        await new Promise(resolve => setTimeout(resolve, 200));
         return reply.status(401).send({ success: false, message: GENERIC_ERROR });
     }
 
@@ -197,6 +224,8 @@ fastify.post('/login', async (request, reply) => {
     } catch (e) {
         // Generic Error for decryption failure to avoid Oracle
         logger.error({ event: 'AUTH_FAIL', message: 'Internal decryption error', user });
+        // Delay before return
+        await new Promise(resolve => setTimeout(resolve, 200));
         return reply.status(401).send({ success: false, message: GENERIC_ERROR });
     }
 
@@ -204,6 +233,8 @@ fastify.post('/login', async (request, reply) => {
     const isValid = totpService.verifyToken(token, secret);
     if (!isValid) {
         logger.warn({ event: 'AUTH_FAIL', message: 'Invalid TOTP code', user, ip });
+        // Delay before return
+        await new Promise(resolve => setTimeout(resolve, 200));
         return reply.status(401).send({ success: false, message: GENERIC_ERROR });
     }
 
@@ -213,6 +244,8 @@ fastify.post('/login', async (request, reply) => {
     const isFresh = await securityService.checkReplay(user);
     if (!isFresh) {
         logger.warn({ event: 'REPLAY_ATTACK', message: 'Replay attack detected (Step Reuse)', user, ip });
+        // Delay to match generic error time
+        await new Promise(resolve => setTimeout(resolve, 200));
         return reply.status(401).send({ success: false, message: GENERIC_ERROR });
     }
 

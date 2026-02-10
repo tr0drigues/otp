@@ -320,16 +320,23 @@
                     autocomplete="off">
             </div>
 
-            <button onclick="doLogin()" id="btnLogin">
-                <span class="btn-text">Sign In</span>
-                <div class="loader"></div>
-            </button>
+            <div class="input-group">
+                <button id="btnLogin">
+                    <span class="btn-text">Entrar</span>
+                    <div class="loader"></div>
+                </button>
+            </div>
 
-            <button onclick="loginWithPasskey()" id="btnPasskey"
-                style="margin-top: 1rem; background: transparent; border: 1px solid #6366f1; color: #6366f1;">
-                <span class="btn-text">🔑 Sign In with Passkey</span>
-                <div class="loader"></div>
-            </button>
+            <div id="passkeySection"
+                style="margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid rgba(255,255,255,0.1);">
+                <p style="font-size: 0.9rem; color: #94a3b8; margin-bottom: 1rem;">
+                    Ou entre com sua Passkey (TouchID, FaceID).
+                </p>
+                <button id="btnPasskey" style="background: transparent; border: 1px solid #6366f1; color: #6366f1;">
+                    <span class="btn-text">Entrar com Passkey</span>
+                    <div class="loader"></div>
+                </button>
+            </div>
 
             <div id="message"></div>
 
@@ -466,8 +473,18 @@
         }
 
         document.getElementById('token').addEventListener('input', function (e) {
-            // Allow alphanumeric and dash for recovery codes
-            this.value = this.value.toUpperCase().replace(/[^A-Z0-9-]/g, '');
+            // Permitir números ou códigos de recovery (alfanuméricos com letras e hífens)
+            // Regex to allow A-Z, a-z, 0-9 and -
+            this.value = this.value.replace(/[^a-zA-Z0-9-]/g, '');
+        });
+
+        // Event Listeners (CSP Fix)
+        document.addEventListener('DOMContentLoaded', () => {
+            const btnLogin = document.getElementById('btnLogin');
+            if (btnLogin) btnLogin.addEventListener('click', login);
+
+            const btnPasskey = document.getElementById('btnPasskey');
+            if (btnPasskey) btnPasskey.addEventListener('click', loginPasskey);
         });
     </script>
 </body>

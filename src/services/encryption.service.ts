@@ -5,7 +5,13 @@ const ALGORITHM = 'aes-256-gcm';
 const IV_LENGTH = 16;
 const SALT_LENGTH = 64;
 const TAG_LENGTH = 16;
-const KEY = process.env.ENCRYPTION_KEY || '0'.repeat(64); // Fallback for dev ONLY
+const isProduction = process.env.NODE_ENV === 'production';
+
+if (isProduction && !process.env.ENCRYPTION_KEY) {
+    throw new Error('FATAL: ENCRYPTION_KEY is required in production.');
+}
+
+const KEY = process.env.ENCRYPTION_KEY || '0'.repeat(64); // Fallback for dev ONLY if not provided
 
 export class EncryptionService {
 

@@ -346,7 +346,7 @@
                 <div class="input-group">
                     <input type="email" id="username" placeholder="name@company.com">
                 </div>
-                <button onclick="setup2FA()" id="btnSetup">
+                <button id="btnSetup">
                     <span class="btn-text">Enable 2FA</span>
                     <div class="loader"></div>
                 </button>
@@ -358,8 +358,7 @@
                 <p style="font-size: 0.9rem; color: #94a3b8; margin-bottom: 1rem;">
                     Configurar login sem senha (TouchID, FaceID).
                 </p>
-                <button onclick="registerPasskey()" id="btnPasskey"
-                    style="background: transparent; border: 1px solid #6366f1; color: #6366f1;">
+                <button id="btnPasskey" style="background: transparent; border: 1px solid #6366f1; color: #6366f1;">
                     <span class="btn-text">Registrar Passkey</span>
                     <div class="loader"></div>
                 </button>
@@ -390,7 +389,7 @@
                         autocomplete="off">
                 </div>
 
-                <button onclick="verifyToken()" id="btnVerify">
+                <button id="btnVerify">
                     <span class="btn-text">Verify Identity</span>
                     <div class="loader"></div>
                 </button>
@@ -545,6 +544,18 @@
         }
 
         document.getElementById('token').addEventListener('input', function (e) { this.value = this.value.replace(/[^0-9]/g, ''); });
+
+        // Event Listeners (Fix for CSP)
+        document.addEventListener('DOMContentLoaded', () => {
+            const btnSetup = document.getElementById('btnSetup');
+            if (btnSetup) btnSetup.addEventListener('click', setup2FA);
+
+            const btnPasskey = document.getElementById('btnPasskey');
+            if (btnPasskey) btnPasskey.addEventListener('click', registerPasskey);
+
+            const btnVerify = document.getElementById('btnVerify');
+            if (btnVerify) btnVerify.addEventListener('click', verifyToken);
+        });
     </script>
 </body>
 

@@ -53,7 +53,11 @@ graph TD
 8.  **Hardening HTTP**: 
     - **CSP (Content Security Policy)**: Política restritiva (`default-src 'self'`) previne XSS.
     - Headers de segurança via `@fastify/helmet` (HSTS, No-Sniff, Frameguard).
+    - **CORS Estrito**: Em produção, bloqueia origens não listadas em `CORS_ORIGIN`.
 9.  **Validação de Input**: Regex estrito em Tokens (6 dígitos ou Recovery Code).
+10. **Proteção contra Side-Channels**:
+    - Delay constante (200ms) em *todas* as falhas de autenticação (usuário não encontrado, senha errada, erro de decriptação).
+    - Logs de "Tentativa" (`AUTH_ATTEMPT`) separados de "Sucesso" (`AUTH_SUCCESS`).
 
 ## 📦 Como Rodar
 
@@ -109,5 +113,13 @@ A pasta `scripts/` contém utilitários para manutenção e migração:
 
 ## ⚠️ Notas de Produção
 
-- **HTTPS**: É obrigatório para WebAuthn e Cookies Secure. Em localhost funciona, mas em produção use um Reverse Proxy (Nginx/Traefik) com SSL.
+- **HTTPS & SSL**: Em produção, a aplicação espera receber tráfego via **Reverse Proxy** (Nginx, Traefik, AWS ALB, Cloudflare) que faça a terminação SSL.
+    - A aplicação roda em HTTP internamente (porta 3000) mas cookies `Secure` e WebAuthn exigem que a origem seja segura.
+    - O servidor confia no header `X-Forwarded-Proto: https`.
+- **Variáveis de Ambiente**:
+    - `NODE_ENV=production`: Ativa HSTS, Cookies Seguros e Otimizações.
+    - `SESSION_SECRET`: Obrigatório em produção.
+    - `ENCRYPTION_KEY`: **Obrigatório em produção**. Chave HEX de 32 bytes (64 caracteres).
+    - `CORS_ORIGIN`: (Opcional) Lista de domínios permitidos separados por vírgula (ex: `https://app.dominio.com,https://admin.dominio.com`). Se não definido em produção, o CORS bloqueará origens externas.
+    - `WEBAUTHN_ORIGIN`: Deve ser a URL pública (ex: `https://auth.seudominio.com`).
 - **Configuração**: Garanta que `WEBAUTHN_ORIGIN` corresponda exatamente ao seu domínio.
