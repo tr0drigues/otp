@@ -187,6 +187,31 @@ Chamado pelo seu Backend a cada login. Você deve enviar o `secret` que salvou a
 }
 ```
 
+### 3. Login (Autenticação / Validação em Produção)
+Esta é a **forma recomendada** de validar o código em Produção. O endpoint busca o segredo seguro no Redis e valida o token.
+
+**Request:** `POST /login`
+```json
+{
+  "user": "usuario@exemplo.com",
+  "token": "123456"
+}
+```
+
+**Response (200 OK):**
+```json
+{
+  "success": true,
+  "message": "Login realizado com sucesso!",
+  "meta": {
+      "method": "TOTP_APP", // ou "WEBAUTHN_PASSKEY" / "RECOVERY_CODE"
+      "user": "usuario@exemplo.com",
+      "timestamp": "2024-02-10T..."
+  }
+}
+```
+> **Nota:** Este endpoint também define um **Cookie de Sessão** (`httpOnly`) para manter o usuário logado no domínio.
+
 Ao levar esta arquitetura para produção (AWS, Azure, DigitalOcean), considere:
 
 ### 1. HTTPS & SSL
