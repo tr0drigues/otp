@@ -1,7 +1,7 @@
 {
-  "name": "otp-system",
+  "name": "passotp",
   "version": "1.0.0",
-  "description": "Secure MFA System (TOTP + WebAuthn/Passkeys) with Security by Design principles",
+  "description": "PassOTP - Drop-in, Self-Hosted MFA Microservice (TOTP + WebAuthn/Passkeys)",
   "type": "module",
   "main": "dist/server.js",
   "scripts": {
