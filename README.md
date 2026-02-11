@@ -1,239 +1,200 @@
 # PassOTP 🛡️
-> **Drop-in, Self-Hosted MFA Microservice for Modern Apps.**
-> Adicione TOTP (Google Authenticator, Microsoft Authenticator) e Passkeys (Biometria) à sua aplicação em minutos, com segurança "out-of-the-box".
+> **Secure Multi-Factor Authentication Infrastructure (Self-Hosted)**
+>
+> PassOTP allows you to add TOTP (Authenticator Apps) and WebAuthn (Passkeys) to your application without implementing low-level cryptography. It runs as a private microservice acting as the authoritative source for second-factor validation.
+
+[![pt-br](https://img.shields.io/badge/lang-pt--br-green.svg)](README.pt-br.md)
+[![en](https://img.shields.io/badge/lang-en-red.svg)](README.md)
+
+- **Standards Compliance**: Strictly follows RFC 6238 (TOTP) and FIDO2 (WebAuthn) specifications.
+- **Hardened Security**: Features AES-256-GCM encryption at-rest, atomic replay protection via Redis, and rate-limiting by IP/User.
+- **Data Sovereignty**: Secrets never leave your infrastructure; you retain full control over user data and access logs.
+- **Drop-in Architecture**: Stateless Node.js API container designed for zero-downtime deployment in Docker or Kubernetes environments.
 
 [![Docker](https://img.shields.io/badge/Docker-Ready-blue?logo=docker)](docker-compose.yml)
 [![Node.js](https://img.shields.io/badge/Node.js-Hardened-green?logo=node.js)](src/server.ts)
 [![Security](https://img.shields.io/badge/Security-AES--256--GCM-red)](src/services/encryption.service.ts)
 [![License](https://img.shields.io/badge/License-MIT-purple.svg)](LICENSE)
 
-**PassOTP** é um microserviço desenhado para ser a camada de autenticação secundária (2FA) da sua infraestrutura. Ao invés de reimplementar lógica complexa de criptografia, proteção contra replay e rate-limiting, você delega isso ao PassOTP e foca no seu produto.
+---
 
-- 🚀 **Pronto para Produção**: Rate Limiting, Replay Protection, AES-256 em repouso.
-- 🐳 **Docker-Native**: Rode com um comando (`docker-compose up`).
-- 🔑 **Passwordless**: Suporte nativo a **Passkeys** (FIDO2/WebAuthn).
+## Architecture & Design Goals
+
+Implementing MFA correctly requires handling significant complexity beyond token generation. PassOTP addresses these system-level challenges:
+
+- **Secret Management**: Does not store secrets in plain text. Uses AES-256-GCM encryption before persistence.
+- **Replay Protection**: Prevents token reuse within the validity window using atomic Redis operations (`SET NX`).
+- **Brute-Force Mitigation**: Enforces rate limits on verification attempts per IP and per user account to prevent credential stuffing.
+- **Session Security**: Manages secure, HttpOnly sessions post-verification.
+
+PassOTP is designed to be the single responsibility service for 2FA, decoupling authentication logic from your main application monolith.
+
+## Technical Features
+
+- **Encryption at Rest**: TOTP secrets are encrypted using `AES-256-GCM` with unique IVs.
+- **Replay Attack Prevention**: Utilizing Redis guarantees atomic checks to invalidate used tokens immediately.
+- **Rate Limiting strategy**:
+    - **IP-based**: Throttling to mitigate DDoS attempts.
+    - **User-based**: Throttling to mitigate targeted attacks on specific accounts.
+- **Privacy Controls**: Constant-time responses where possible to mitigate timing attacks; minimal logging of sensitive data.
+- **WebAuthn Support**: Enforces User Verification (UV) by default in production configurations (Biometrics/PIN required).
 
 ---
 
-## ⚡ Por que PassOTP?
+## Quickstart (Deployment)
 
-Implementar MFA corretamente é difícil. Bibliotecas como `speakeasy` ou `otplib` dão as ferramentas, mas não o **sistema**. Você ainda precisa resolver:
-- *Onde guardar o segredo?* (Texto plano no banco = falha crítica)
-- *Como impedir que usem o mesmo código 2x?* (Replay Attack)
-- *Como evitar força bruta?* (Rate Limiting)
-- *Como gerenciar sessões seguras?*
+This guide assumes a Docker and Docker Compose environment.
 
-**PassOTP resolve tudo isso.** Ele encapsula a complexidade em uma API REST simples e segura.
-
----
-
-## ✨ Features (Hardening)
-
-- **Criptografia em Repouso**: Segredos TOTP são encriptados com **AES-256-GCM** antes de tocar o Redis.
-- **Proteção de Replay**: Impede o reuso de tokens válidos dentro da mesma janela de tempo (`SET NX` atômico).
-- **Rate Limiting Inteligente**:
-    - **Por IP**: Mitiga DDoS.
-    - **Por Usuário**: Mitiga Credential Stuffing.
-- **Privacy-First**: Proteção contra Enumeração de Usuários e Timing Attacks (resposta com delay constante).
-- **Sessão Segura**: Cookies `HttpOnly`, `Secure` e `SameSite=Lax/Strict`.
-- **WebAuthn "Secure-by-Default"**: Exige User Verification (Biometria/PIN) em produção.
-
----
-
-## 🚀 Quickstart (5 Minutos)
-
-Pré-requisitos: Docker e Docker Compose.
-
-1.  **Clone e Configure**:
+1.  **Clone and Configure**:
     ```bash
     git clone https://github.com/tr0drigues/passotp.git
     cd passotp
     cp .env.example .env
+    # Edit .env to set your ENCRYPTION_KEY (32 bytes) and secure secrets
     ```
 
-2.  **Suba o Serviço**:
+2.  **Start Services**:
     ```bash
     docker-compose up -d --build
     ```
 
-3.  **Teste**:
-    Acesse **http://localhost** para ver a UI de demonstração incluída.
-    - Cadastre um usuário (`user@test.com`).
-    - Escaneie o QR Code.
-    - Faça Login com o código.
+3.  **Verification**:
+    Access **http://localhost** to view the included demo UI.
+    - Register a test user (`user@test.com`).
+    - Scan the QR Code with an Authenticator App (e.g., Google Authenticator).
+    - Validate the login flow with the generated code.
 
 ---
 
-## 🔌 Integração (Backend-to-Backend)
+## Integration Guide
 
-Sua aplicação ("Consumer App") conversa com o PassOTP via API REST interna (porta 3000 ou via proxy).
+Your application ("Consumer App") communicates with PassOTP via its internal REST API.
 
-### Arquitetura de Referência
-O PassOTP assume a responsabilidade de *gerar*, *armazenar* e *validar* os fatores de autenticação.
+### Production Flow
+In a production environment, PassOTP handles the generation, storage, and validation of factors.
 
 ```mermaid
 sequenceDiagram
   autonumber
-  participant App as App Externa (Frontend)
+  participant App as Consumer App (Frontend)
   participant API as PassOTP API (Backend)
   participant Redis as Redis
-  participant User as Usuário
+  participant User as User
 
-  Note over App,API: Produção: /setup retorna apenas qrCode e recoveryCodes (sem secret/otpAuth)
+  Note over App,API: Production Mode: /setup returns only qrCode & recoveryCodes.
 
   App->>API: POST /setup { user }
   API->>API: Generate TOTP secret
   API->>API: Encrypt secret (AES-256-GCM)
-  API->>Redis: HSET user:{user} encryptedSecret + metadata
+  API->>Redis: HSET user:{user} encryptedSecret
   Redis-->>API: OK
   API-->>App: 200 { qrCode, recoveryCodes }
 
-  App->>User: Exibir QR Code (usuário cadastra no Authenticator)
-  User-->>App: Informa token TOTP (6 dígitos)
+  App->>User: Display QR Code
+  User-->>App: Input 6-digit TOTP Token
 
   App->>API: POST /login { user, token }
   API->>Redis: HGET user:{user} encryptedSecret
   Redis-->>API: encryptedSecret
-  API->>API: Decrypt + Verify TOTP + Replay check + Rate limit
-  API->>Redis: Create session (session:{id})
-  Redis-->>API: OK
-  API-->>App: 200 + Set-Cookie: session=...<br/>{ message, method, context }
+  API->>API: Decrypt + Verify + Check Replay
+  API->>Redis: Set Session (session:{id})
+  API-->>App: 200 OK + Session Cookie
 ```
 
-### Segurança do Fluxo
-Observe que **o segredo TOTP nunca sai do PassOTP** em produção. O cliente recebe apenas a imagem do QR Code. A validação ocorre internamente.
+**Security Note**: The TOTP secret is never exposed to the client or the consumer application after the initial setup.
+
+### API Endpoints
+
+#### `POST /setup`
+Initializes MFA for a user.
+- **Input**: `{ "user": "string" }`
+- **Output**: `{ "qrCode": "data:image/...", "recoveryCodes": [...] }`
+
+#### `POST /login`
+Validates a TOTP token or Recovery code.
+- **Input**: `{ "user": "string", "token": "string" }`
+- **Output**: `{ "success": true, "meta": { ... } }` (Sets `HttpOnly` cookie)
 
 ---
 
-## 📚 API Reference
+## Trade-offs & Comparisons
 
-Endpoints essenciais para integração.
+PassOTP is a specialized microservice. Consider the following trade-offs when selecting a solution.
 
-### 1. Setup (Ativar MFA)
-Gera o segredo, salva encriptado e retorna o QR Code.
+### vs. Libraries (`otplib`, `speakeasy`)
+| Feature | Libraries | PassOTP Scheme |
+| :--- | :--- | :--- |
+| **Scope** | Helper functions (generate/verify) | Full System (State, API, Persistence) |
+| **Security** | Implementation dependent | Enforced (Encryption, Replay protection) |
+| **Operational Overhead** | Low (code only) | Medium (requires Redis/Docker) |
 
-**Request:** `POST /setup`
-```json
-{ "user": "usuario@exemplo.com" }
-```
+### vs. IAM Suites (`Keycloak`, `Authentik`)
+| Feature | IAM Suites | PassOTP |
+| :--- | :--- | :--- |
+| **Capability** | Full Identity Management (SSO, OIDC) | Focused purely on 2FA/MFA |
+| **Complexity** | High (Heavy resources, complex config) | Low (Single container, simple REST API) |
+| **Integration** | OIDC/SAML Protocols | REST / Direct API |
 
-**Response (Prod):**
-```json
-{
-  "qrCode": "data:image/png;base64,...", 
-  "recoveryCodes": ["A1B2-C3D4", ...]
-}
-```
+### vs. SaaS (`Auth0`, etc.)
+| Feature | SaaS | PassOTP |
+| :--- | :--- | :--- |
+| **Cost Model** | User/Volume based | Infrastructure (Compute/Memory) |
+| **Data Control** | Vendor Managed | Self-hosted / Private |
+| **Maintenance** | Minimal | Requires self-hosting updates |
 
-### 2. Login (Validação)
-Endpoint principal. Valida o token (TOTP ou Recovery) e cria a sessão.
-
-**Request:** `POST /login`
-```json
-{ "user": "usuario@exemplo.com", "token": "123456" }
-```
-
-**Response (200 OK):**
-```json
-{
-  "success": true,
-  "message": "Login realizado!",
-  "meta": { "method": "TOTP_APP" }
-}
-```
-
-### 3. Verify (Dev/Test Only)
-⚠ **Desabilitado em Produção.** Útil apenas para testes manuais ou scripts de CI incontrolados.
+**Recommendation**: Use PassOTP if you need a lightweight, self-hosted 2FA layer without the overhead of a full Identity Provider (IdP).
 
 ---
 
-## 🆚 Comparações: Quando usar PassOTP?
+## Development vs. Production
 
-### A. vs Bibliotecas (`otplib`, `speakeasy`)
-| Feature | Bibliotecas | PassOTP 🛡️ |
-|---------|-------------|-------------|
-| **Escopo** | Funções (gerar tokens, verificar) | Sistema Completo (API, DB, Sessão) |
-| **Persistência** | Não (você implementa) | Sim (Redis + AES-256) |
-| **Replay Protection** | Não (você implementa) | Sim (Built-in) |
-| **Rate Limiting** | Não | Sim (IP + User) |
+The application behavior changes based on environment variables to support testing while securing production.
 
-### B. vs IAM Suites (`Keycloak`, `Authentik`)
-| Feature | IAM Suites | PassOTP 🛡️ |
-|---------|------------|-------------|
-| **Foco** | Identidade Completa (SSO, Users) | Apenas MFA/2FA |
-| **Peso** | Pesado (Java, múltiplos containers) | Leve (Microserviço Node.js) |
-| **Integração** | Complexa (OIDC/SAML) | Simples (REST API) |
-| **Controle** | Opinião forte sobre users | Você controla seus usuários |
-
-### C. vs SaaS (`Auth0`, `Okta`)
-| Feature | SaaS Auth | PassOTP 🛡️ |
-|---------|-----------|-------------|
-| **Custo** | Por MAU (Monthly Active User) | Custo fixo (sua infra) |
-| **Dados** | Proprietário (Vendor Lock-in) | Seus dados, sua privacidade |
-| **Setup** | Instantâneo | Requer Docker host |
-
-### Veredito
-✅ **Escolha PassOTP se:**
-- Você já tem usuários e só quer adicionar 2FA.
-- Você quer controle total dos dados e segredos.
-- Você precisa de conformidade (logs, rate limit) sem pagar SaaS caro.
-- Você usa arquitetura de microserviços.
-
-❌ **NÃO escolha PassOTP se:**
-- Você precisa de um gestão completa de usuários (SignUp, Forgot Password, SSO). (Use Keycloak/Auth0)
-- Você não quer gerenciar infraestrutura Docker/Redis.
+| Variable | Default (Prod) | Impact |
+| :--- | :--- | :--- |
+| `ALLOW_DEBUG_SETUP_OUTPUT` | `false` | If `true`, returns the raw secret in `/setup` response (Debug only). |
+| `ENABLE_DEV_VERIFY_ENDPOINT`| `false` | If `true`, enables a `/verify` endpoint for integration testing. |
+| `WEBAUTHN_REQUIRE_UV` | `true` | If `false`, allows WebAuthn registration without rigorous user verification (e.g., for testing). |
 
 ---
 
-## 🛠️ Modo Dev vs Prod
+## Production Checklist
 
-Flags de "Break-glass" para desenvolvimento. **Evite em produção**.
+Before deploying to a public environment, verify the following:
 
-| Variável | Prod Default | Risco |
-|----------|--------------|-------|
-| `ALLOW_DEBUG_SETUP_OUTPUT` | `false` | Se `true`, `/setup` retorna secret cru. |
-| `ENABLE_DEV_VERIFY_ENDPOINT` | `false` | Se `true`, habilita `/verify`. |
-| `I_KNOW_WHAT_IM_DOING` | `false` | Trava de segurança obrigatória. |
-
----
-
-## ✅ Go-Live Checklist
-
-Antes de ir para produção:
-1.  [ ] **HTTPS**: Configure SSL no Nginx ou Load Balancer.
-2.  [ ] **Env**: `NODE_ENV=production`.
-3.  [ ] **Chaves**: `ENCRYPTION_KEY` gerada segura (32 bytes).
-4.  [ ] **Segredos**: `SESSION_SECRET` forte.
-5.  [ ] **CORS**: `FRONTEND_ORIGIN` restrito ao seu domínio.
-6.  [ ] **WebAuthn**: `WEBAUTHN_REQUIRE_UV=true`.
+- [ ] **HTTPS Enforced**: Ensure SSL/TLS termination is handled by Nginx or your Load Balancer.
+- [ ] **Environment**: Set `NODE_ENV=production`.
+- [ ] **Secrets Rotation**: Generate a strong (32-byte) `ENCRYPTION_KEY` and robust `SESSION_SECRET`.
+- [ ] **CORS Policy**: Restrict `FRONTEND_ORIGIN` to your specific domain.
+- [ ] **WebAuthn Policy**: Verify `WEBAUTHN_REQUIRE_UV=true` is set.
 
 ---
 
-## 🏗️ Arquitetura (Infraestrutura)
+## Infrastructure Overview
 
 ```mermaid
 graph TD
-    Client(["👤 User / Browser"]) 
+    Client(["User / Browser"]) 
     
-    subgraph "PassOTP Stack"
-        style Nginx fill:#f9f9f9,stroke:#009639,stroke-width:2px
-        Nginx["🌐 <b>Nginx</b><br/>(Termination SSL)"]
+    subgraph "PassOTP Infrastructure"
+        style Nginx fill:#f9f9f9,stroke:#333,stroke-width:2px
+        Nginx["Nginx / Load Balancer<br/>(TLS Termination)"]
         
-        subgraph "App Layer"
-            style Node fill:#eff,stroke:#339933,stroke-width:2px
-            Node["🟢 <b>PassOTP API</b><br/>(Node.js/Fastify)"]
+        subgraph "Application"
+            style Node fill:#eff,stroke:#333,stroke-width:2px
+            Node["PassOTP Service<br/>(Node.js / Fastify)"]
         end
         
-        subgraph "Data Layer"
-            style Redis fill:#ffe,stroke:#DC382D,stroke-width:2px
-            Redis[("🔴 <b>Redis</b><br/>(Sessions / Secrets)")]
+        subgraph "Persistence"
+            style Redis fill:#ffe,stroke:#333,stroke-width:2px
+            Redis[("Redis<br/>(Sessions / Secrets)")]
         end
     end
 
     Client -->|HTTPS| Nginx
-    Nginx -->|Proxy| Node
-    Node -->|Aes-256| Redis
+    Nginx -->|Reverse Proxy| Node
+    Node -->|Encrypted Ops| Redis
 ```
 
-## 📜 Licença
+## License
 MIT
