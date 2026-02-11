@@ -15,21 +15,36 @@ Este guia descreve como implantar o PassOTP em um cluster Kubernetes.
 
 Você precisa buildar a imagem da aplicação e subir para um registry acessível pelo seu cluster.
 
+### 2. Build da Imagem
+
+A estratégia de build depende de onde seu Kubernetes está rodando.
+
+#### Opção A: Docker Desktop / Minikube (Local)
+Se você está rodando o Kubernetes localmente (com Docker Desktop), **não precisa dar push** para o Docker Hub. O Kubernetes consegue enxergar as imagens que você builda localmente.
+
 ```bash
-# Login no Docker Hub (exemplo)
-docker login
-
-# Build da imagem (substitua 'seu-usuario' pelo seu user no DockerHub)
-docker build -t seu-usuario/passotp:latest .
-
-# Push da imagem
-docker push seu-usuario/passotp:latest
+# Build local apenas
+docker build -t passotp:latest .
 ```
 
-> [!IMPORTANT]
-> Atualize o arquivo `k8s/app.yaml` com o nome da sua imagem (`image: seu-usuario/passotp:latest`).
+*Nota: O arquivo `k8s/app.yaml` já está configurado com `imagePullPolicy: IfNotPresent`, o que instrui o K8s a usar a imagem local se ela existir.*
 
-### 2. Configurar Segredos e Variáveis
+#### Opção B: Cluster Remoto (AWS, DigitalOcean, GKE, etc.)
+Se você vai fazer deploy em um servidor remoto, o cluster **não tem acesso** ao seu computador. Você precisa subir a imagem para um registro (Docker Hub, GHCR, etc.).
+
+1.  Crie um repositório no Docker Hub (ex: `seu-usuario/passotp`).
+2.  Faça o build e push:
+    ```bash
+    # Login no Docker Hub
+    docker login
+
+    # Build e Push
+    docker build -t seu-usuario/passotp:latest .
+    docker push seu-usuario/passotp:latest
+    ```
+3.  **Importante**: Edite o arquivo `k8s/app.yaml` e altere a linha `image: passotp:latest` para `image: seu-usuario/passotp:latest`.
+
+### 3. Configurar Segredos e Variáveis
 
 Edite o arquivo `k8s/secret.yaml` e coloque seus segredos codificados em Base64.
 

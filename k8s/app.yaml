@@ -17,6 +17,8 @@ spec:
     spec:
       containers:
         - name: passotp
+          # PARA PRODUÇÃO REMOTA: Alterar para seu registry (ex: seu-user/passotp:latest)
+          # PARA LOCAL (Docker Desktop): Manter 'passotp:latest'
           image: passotp:latest
           imagePullPolicy: IfNotPresent
           ports:

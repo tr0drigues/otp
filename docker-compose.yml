@@ -2,7 +2,10 @@ version: '3.8'
 
 services:
   app:
+    # OPÇÃO 1: Buildar localmente (Padrão para quem clona o repo)
     build: .
+    # OPÇÃO 2: Usar imagem pronta (Se não quiser buildar)
+    # image: seu-usuario/passotp:latest
     container_name: otp-app
     depends_on:
       - redis
