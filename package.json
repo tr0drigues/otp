@@ -3,6 +3,10 @@
   "version": "1.0.0",
   "description": "PassOTP - Drop-in, Self-Hosted MFA Microservice (TOTP + WebAuthn/Passkeys)",
   "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tr0drigues/passotp.git"
+  },
   "main": "dist/server.js",
   "scripts": {
     "dev": "tsx watch src/server.ts",

@@ -1,13 +1,13 @@
 # PassOTP 🛡️
 > **Drop-in, Self-Hosted MFA Microservice for Modern Apps.**
-> Adicione TOTP (Google Authenticator) e Passkeys (Biometria) à sua aplicação em minutos, com segurança bancária "out-of-the-box".
+> Adicione TOTP (Google Authenticator, Microsoft Authenticator) e Passkeys (Biometria) à sua aplicação em minutos, com segurança "out-of-the-box".
 
 [![Docker](https://img.shields.io/badge/Docker-Ready-blue?logo=docker)](docker-compose.yml)
 [![Node.js](https://img.shields.io/badge/Node.js-Hardened-green?logo=node.js)](src/server.ts)
 [![Security](https://img.shields.io/badge/Security-AES--256--GCM-red)](src/services/encryption.service.ts)
 [![License](https://img.shields.io/badge/License-MIT-purple.svg)](LICENSE)
 
-**PassOTP** é um microserviço *opinionated* desenhado para ser a camada de autenticação secundária (2FA) da sua infraestrutura. Ao invés de reimplementar lógica complexa de criptografia, proteção contra replay e rate-limiting, você delega isso ao PassOTP e foca no seu produto.
+**PassOTP** é um microserviço desenhado para ser a camada de autenticação secundária (2FA) da sua infraestrutura. Ao invés de reimplementar lógica complexa de criptografia, proteção contra replay e rate-limiting, você delega isso ao PassOTP e foca no seu produto.
 
 - 🚀 **Pronto para Produção**: Rate Limiting, Replay Protection, AES-256 em repouso.
 - 🐳 **Docker-Native**: Rode com um comando (`docker-compose up`).
@@ -46,7 +46,7 @@ Pré-requisitos: Docker e Docker Compose.
 
 1.  **Clone e Configure**:
     ```bash
-    git clone https://github.com/seu-user/passotp.git
+    git clone https://github.com/tr0drigues/passotp.git
     cd passotp
     cp .env.example .env
     ```
