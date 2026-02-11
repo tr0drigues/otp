@@ -1,13 +1,12 @@
 
 import { Redis } from 'ioredis';
+import { config } from '../config.js';
 
-// Conexão com Redis
-// Em produção, usar process.env.REDIS_URL
 const redis = new Redis({
-    host: process.env.REDIS_HOST || 'localhost',
-    port: Number(process.env.REDIS_PORT) || 6379,
+    host: config.redis.host,
+    port: config.redis.port,
     retryStrategy: (times: number) => {
-        // Retry indefinidamente com delay crescente até 2s
+        // Linear backoff up to 2s
         const delay = Math.min(times * 50, 2000);
         return delay;
     },
@@ -18,7 +17,9 @@ redis.on('error', (err: any) => {
 });
 
 redis.on('connect', () => {
-    console.log('Redis Connected');
+    if (!config.env.isProduction) {
+        console.log('Redis Connected');
+    }
 });
 
 export default redis;

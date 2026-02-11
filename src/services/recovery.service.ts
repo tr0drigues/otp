@@ -5,19 +5,17 @@ import { logger } from '../lib/logger.js';
 
 export class RecoveryService {
     /**
-     * Hasheia e salva os códigos de recuperação no Redis.
-     * Estrutura: Set redis `recovery:{user}` com os hashes.
-     * Usamos Set para garantir unicidade e facilitar remoção.
+     * Hashes and saves recovery codes in Redis.
+     * Structure: Redis Set `recovery:{user}` containing hashes.
+     * Sets ensure uniqueness and efficient removal.
      */
     async saveRecoveryCodes(user: string, codes: string[]): Promise<void> {
         const key = `recovery:${user}`;
 
-        // Deleta códigos antigos se houver (reset)
+        // Reset existing codes
         await redis.del(key);
 
-        // Hash each code and push to Redis set
-        // Em produção real, faríamos Promise.all para performance, 
-        // mas sequencial aqui garante ordem de log se necessário.
+        // Hash each code sequentially and add to Redis
         for (const code of codes) {
             const hash = await bcrypt.hash(code, 10);
             await redis.sadd(key, hash);
@@ -31,10 +29,8 @@ export class RecoveryService {
     }
 
     /**
-     * Tenta validar um código de recuperação.
-     * Se válido, REMOVE o código do set (uso único).
-     * Custo: O(N) onde N é número de códigos (max 10), pois precisamos comparar o input com cada hash.
-     * Como N é muito pequeno, a performance é desprezível.
+     * Attempts to validate a recovery code.
+     * Usage consumes the code (single use).
      */
     async validateAndConsumeCode(user: string, inputCode: string): Promise<boolean> {
         const key = `recovery:${user}`;
@@ -45,7 +41,7 @@ export class RecoveryService {
         for (const hash of hashes) {
             const match = await bcrypt.compare(inputCode, hash);
             if (match) {
-                // Código válido! Remover este hash do set para impedir reuso
+                // Code matches; remove from set to invalidate
                 await redis.srem(key, hash);
 
                 logger.warn({

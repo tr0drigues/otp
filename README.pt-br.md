@@ -29,6 +29,18 @@ Implementar MFA corretamente exige lidar com complexidade significativa além da
 
 O PassOTP foi projetado para ser o serviço de responsabilidade única para 2FA, desacoplando a lógica de autenticação do monólito da sua aplicação principal.
 
+## Modelo de Segurança
+
+O PassOTP implementa uma estratégia de defesa em profundidade.
+
+- **Modelo de Ameaças**: Veja [SECURITY.md](SECURITY.md) (em inglês) para detalhes de como mitigamos Força Bruta, Ataques de Replay e Enumeração.
+- **Decisões de Arquitetura**:
+  - [ADR-001: Arquitetura Stateless com Redis](docs/adr/001-stateless-architecture.md)
+  - [ADR-002: Criptografia de Segredos (AES-256)](docs/adr/002-secret-encryption.md)
+  - [ADR-003: Política de WebAuthn](docs/adr/003-webauthn-policy.md)
+
+---
+
 ## Recursos Técnicos
 
 - **Criptografia em Repouso**: Segredos TOTP são encriptados usando `AES-256-GCM` com IVs únicos.

@@ -1,5 +1,7 @@
 
 export type LogLevel = 'info' | 'warn' | 'error' | 'fatal';
+
+// Standardized Security Events
 export type SecurityEvent =
     | 'AUTH_ATTEMPT'
     | 'AUTH_SUCCESS'
@@ -13,7 +15,7 @@ export type SecurityEvent =
     | 'SETUP_COMPLETE'
     | 'RECOVERY_USE'
     | 'SYSTEM_START'
-    | 'SECURITY_ALERT'; // New for critical alerts
+    | 'SECURITY_ALERT';
 
 interface LogPayload {
     event: SecurityEvent;
@@ -31,8 +33,7 @@ class SecurityLogger {
             level,
             ...payload
         };
-        // Em produção, isso iria para stdout para ser coletado por Datadog/Splunk
-        // Para dev, console.log é suficiente
+        // In production, log aggregation tools (Datadog, Splunk) capture stdout.
         console.log(JSON.stringify(entry));
     }
 
